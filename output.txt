@@ -1,0 +1,16 @@
+Restaurant Seating Simulation Results
+Total number of tables: 9
+Total number of customer groups: 6
+Total number of customer groups served: 6
+Average waiting time: 0.00 minutes
+Maximum waiting time: 0 minutes
+Maximum queue length for each queue:
+   Queue 1 (size 1-2): 1
+   Queue 2 (size 3-4): 1
+   Queue 3 (size 5-6): 1
+   Queue 4 (size 7+): 0
+Distribution of waiting times:
+   Seated immediately: 100.00%
+   Seated between 0-15 minutes: 0.00%
+   Seated between 15-30 minutes: 0.00%
+   Seated greater than 30 minutes: 0.00%

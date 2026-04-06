@@ -1,14 +1,21 @@
 import sys
 
 #Define lists for tables, customers, and queues
-tab = list() #Each element represents a table: [capacity,availability(True for available, False for occupied)]
-cus = list() #Each element represents a customer group: [arrival_time, group_size, dining_duration, table_id(-1 if not seated)]
-q = [[], [], [], []] #Each element represents a queue for a specific table capacity range: [<all group ids in this queue>]
-tab_num = [0, 0, 0, 0] #Number of tables in each capacity range (corresponding to the queues)
+tables = list() #Each element represents a table: {"capacity": int, "availability": bool}
+customers = list() #Each element represents a customer group: {"arrival_time": int, "group_size": int, "dining_duration": int, "table_id": int}
+queues = [[], [], [], []] #Each element represents a queue for a capacity range: list of group ids
+tab_num = [0, 0, 0, 0] #Number of tables in each capacity range (1-2, 3-4, 5-6, 7+)
 
 #Define timeline and eventlist to store events
 timeline = list() #Each element represents a time point when an event occurs
 eventlist = dict() #Key: time point, Value: list of events at that time point
+
+#Define variables for computing statistics
+waiting_time = list() #Each element represents the waiting time of a customer group
+avg_waiting_time = 0
+max_waiting_time = 0
+groups_served = 0
+max_queue_length = [0, 0, 0, 0]
 
 #Define function add_event to add events to the eventlist and timeline
 def add_event(time, gid, event_type):
@@ -35,7 +42,7 @@ def add_event(time, gid, event_type):
 
 #Define function file_input to read input from file
 def file_input():
-    global tab, cus, q, tab_num
+    global tables, customers, queues, tab_num
     try:
         with open("input.txt", "r") as file:
             #Read the first line to get the number of tables and their capacities
@@ -74,8 +81,9 @@ def file_input():
                     print("Invalid table information.")
                     sys.exit()
                 for j in range(table_num):
-                    temp_tab.append([table_cap, True])
-            tab = sorted(temp_tab, key=lambda x: x[0])
+                    temp_tab.append({"capacity": table_cap, "availability": True})
+                    waiting_time.append(-1) #Initialize waiting time for each customer group to 0
+            tables = sorted(temp_tab, key=lambda x: x["capacity"])
             
             #Read the number of customers, then their group sizes, arrival times, and dining durations
             line = file.readline()
@@ -101,7 +109,7 @@ def file_input():
                 except ValueError:
                     print("Invalid customer information.")
                     sys.exit()
-                cus.append([arrival_time, group_size, dining_duration, -1])
+                customers.append({"arrival_time": arrival_time, "group_size": group_size, "dining_duration": dining_duration, "table_id": -1})
                 add_event(arrival_time, i, True)
     except FileNotFoundError:
         print("Input file not found.")
@@ -109,13 +117,21 @@ def file_input():
 
 #Define function dining_start to handle the start of dining for a customer group
 def dining_start(time, tid, qid):
-    temp = q[qid][0]
-    q[qid].pop(0)
-    cus[temp][3] = tid
-    tab[tid][1] = False
+    global groups_served, avg_waiting_time, max_waiting_time, waiting_time
+    groups_served += 1
+
+    temp = queues[qid][0]
+    queues[qid].pop(0)
+    customers[temp]["table_id"] = tid
+    tables[tid]["availability"] = False
+
+    #Calculate waiting time
+    waiting_time[temp] = time - customers[temp]["arrival_time"]
+    if (waiting_time[temp] > max_waiting_time):
+        max_waiting_time = waiting_time[temp]
 
     #Calculate the departure time and add the departure event
-    minutes = time % 100 + cus[temp][2]
+    minutes = time % 100 + customers[temp]["dining_duration"]
     hours = time // 100 + minutes // 60
     minutes = minutes % 60
     departure_time = hours * 100 + minutes
@@ -123,39 +139,90 @@ def dining_start(time, tid, qid):
 
     print("Customer group " + str(temp) + " starts dining at time " + str(time) + " at table " + str(tid) + ".")
 
+#Define function dining_end to handle the end of dining for a customer group
 def dining_end(time, tid, gid):
-    cus[gid][3] = -1
-    tab[tid][1] = True
+    customers[gid]["table_id"] = -1
+    tables[tid]["availability"] = True
 
     print("Customer group " + str(gid) + " finishes dining at time " + str(time) + " and leaves table " + str(tid) + ".")
 
+#Define function add_to_queue to add a customer group to a queue
 def add_to_queue(gid):
-    group_size = cus[gid][1]
+    group_size = customers[gid]["group_size"]
+    this_queue = -1
     if (group_size <= 2):
-        q[0].append(gid)
+        this_queue = 0
     elif (group_size <= 4):
-        q[1].append(gid)
+        this_queue = 1
     elif (group_size <= 6):
-        q[2].append(gid)
+        this_queue = 2
     else:
-        q[3].append(gid)
+        this_queue = 3
+    queues[this_queue].append(gid)
+    if (len(queues[this_queue]) > max_queue_length[this_queue]):
+        max_queue_length[this_queue] = len(queues[this_queue])
 
 #Check if there are available tables for the queue and start dining if possible
 def check_queue(qid, time):
     table_end = sum(tab_num[:qid + 1])
     table_start = table_end - tab_num[qid]
-    max_group = len(q[qid])
+    max_group = len(queues[qid])
     for i in range(table_start, table_end):
         if (max_group == 0):
             break
-        if (tab[i][1] == True and cus[q[qid][0]][1] <= tab[i][0]):
+        if (tables[i]["availability"] == True and customers[queues[qid][0]]["group_size"] <= tables[i]["capacity"]):
             dining_start(time, i, qid)
             max_group -= 1
+
+def file_output():
+    global avg_waiting_time
+    if (groups_served > 0):
+        waiting_time_sum = 0
+        for i in range(len(waiting_time)):
+            if (waiting_time[i] >= 0):
+                waiting_time_sum += waiting_time[i]
+        avg_waiting_time = waiting_time_sum / groups_served
+    seated_immediately = 0
+    seated_between_0_15 = 0
+    seated_between_15_30 = 0
+    seated_greater_than_30 = 0
+    for i in range(len(waiting_time)):
+        if (waiting_time[i] < 0):
+            continue
+        if (waiting_time[i] == 0):
+            seated_immediately += 1
+        elif (waiting_time[i] <= 15):
+            seated_between_0_15 += 1
+        elif (waiting_time[i] <= 30):
+            seated_between_15_30 += 1
+        else:
+            seated_greater_than_30 += 1
+    with open("output.txt", "w") as file:
+        file.write("Restaurant Seating Simulation Results\n")
+
+        file.write("Total number of tables: " + str(len(tables)) + "\n")
+        file.write("Total number of customer groups: " + str(len(customers)) + "\n")
+        file.write("Total number of customer groups served: " + str(groups_served) + "\n")
+
+        file.write("Average waiting time: " + f"{avg_waiting_time:.2f}" + " minutes\n")
+        file.write("Maximum waiting time: " + str(max_waiting_time) + " minutes\n")
+
+        file.write("Maximum queue length for each queue:\n")
+        file.write("   Queue 1 (size 1-2): " + str(max_queue_length[0]) + "\n")
+        file.write("   Queue 2 (size 3-4): " + str(max_queue_length[1]) + "\n")
+        file.write("   Queue 3 (size 5-6): " + str(max_queue_length[2]) + "\n")
+        file.write("   Queue 4 (size 7+): " + str(max_queue_length[3]) + "\n")
+        
+        file.write("Distribution of waiting times:\n")
+        file.write("   Seated immediately: " + f"{seated_immediately / groups_served * 100:.2f}%" + "\n")
+        file.write("   Seated between 0-15 minutes: " + f"{seated_between_0_15 / groups_served * 100:.2f}%" + "\n")
+        file.write("   Seated between 15-30 minutes: " + f"{seated_between_15_30 / groups_served * 100:.2f}%" + "\n")
+        file.write("   Seated greater than 30 minutes: " + f"{seated_greater_than_30 / groups_served * 100:.2f}%" + "\n")
 
 #Main function    
 def main():
     file_input()
-    print("There are " + str(len(tab)) + " tables and " + str(len(cus)) + " customer groups in total.")
+    print("There are " + str(len(tables)) + " tables and " + str(len(customers)) + " customer groups in total.")
     temp = 0
     time = 0
 
@@ -174,7 +241,7 @@ def main():
 
         #Handle Customer Departures
         while (event_id < len(eventlist[time])):
-            dining_end(time, cus[eventlist[time][event_id][0]][3], eventlist[time][event_id][0])
+            dining_end(time, customers[eventlist[time][event_id][0]]["table_id"], eventlist[time][event_id][0])
             event_id += 1
 
         #Handle Table Assignments
@@ -182,5 +249,8 @@ def main():
             check_queue(i, time)
 
         temp += 1
+    
+    #Output statistics to file
+    file_output()
 
 main()
