@@ -1,7 +1,6 @@
 import sys
 import csv
 import json
-import string
 
 #Define lists for tables, customers, and queues
 tables = list() #Each element represents a table: {"capacity": int, "availability": bool}
@@ -50,7 +49,7 @@ def file_input(rest_stat, cust_stat):
     try:
         with open(rest_stat, 'r', encoding = 'utf-8') as file:
             data = json.load(file)
-            sorted_queues = sorted(data["queues"], key=lambda x: x["min_size"])
+            sorted_queues = sorted(data["queue_definitions"], key=lambda x: x["min_size"])
             for data_queue in sorted_queues:
                 tab_num.append(0)
                 queues.append(list())
@@ -77,8 +76,7 @@ def file_input(rest_stat, cust_stat):
     
     try:
         with open(cust_stat, 'r', encoding = 'utf-8') as file:
-            reader = csv.reader(file)
-            next(reader) #Skip the header line
+            reader = csv.DictReader(file)
             for row in reader:
                 try:
                     time_shown = (row['arrival_time'].strip()).split(':')
@@ -87,6 +85,8 @@ def file_input(rest_stat, cust_stat):
                     dining_duration = int(row['dining_duration'].strip())
                     customers.append({"arrival_time": arrival_time, "group_size": group_size, "dining_duration": dining_duration, "table_id": -1})
                     add_event(arrival_time, len(customers) - 1, True)
+                    
+                    waiting_time.append(-1)
                 except ValueError:
                     print("Invalid customer information.")
                     sys.exit()
@@ -116,14 +116,10 @@ def dining_start(time, tid, qid):
     departure_time = hours * 100 + minutes
     add_event(departure_time, temp, False)
 
-    #print("Customer group " + str(temp) + " starts dining at time " + str(time) + " at table " + str(tid) + ".")
-
 #Define function dining_end to handle the end of dining for a customer group
 def dining_end(time, tid, gid):
     customers[gid]["table_id"] = -1
     tables[tid]["availability"] = True
-
-    #print("Customer group " + str(gid) + " finishes dining at time " + str(time) + " and leaves table " + str(tid) + ".")
 
 #Define function add_to_queue to add a customer group to a queue
 def add_to_queue(gid):
@@ -198,8 +194,8 @@ def file_output():
 
 #Main function    
 def main():
-    rest_stat = string(input("Input the file for restaurant statistics (.json): "))
-    cust_stat = string(input("Input the file for customer statistics (.csv):"))
+    rest_stat = str(input("Input the file for restaurant statistics (.json): "))
+    cust_stat = str(input("Input the file for customer statistics (.csv): "))
     file_input(rest_stat, cust_stat)
     #print("There are " + str(len(tables)) + " tables and " + str(len(customers)) + " customer groups in total.")
     temp = 0
