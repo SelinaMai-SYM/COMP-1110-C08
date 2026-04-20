@@ -1,10 +1,14 @@
 import sys
+import csv
+import json
+import string
 
 #Define lists for tables, customers, and queues
 tables = list() #Each element represents a table: {"capacity": int, "availability": bool}
 customers = list() #Each element represents a customer group: {"arrival_time": int, "group_size": int, "dining_duration": int, "table_id": int}
-queues = [[], [], [], []] #Each element represents a queue for a capacity range: list of group ids
-tab_num = [0, 0, 0, 0] #Number of tables in each capacity range (1-2, 3-4, 5-6, 7+)
+queues = list() #Each element represents a queue for a capacity range: list of group ids
+queues_min_size = list()
+tab_num = list()
 
 #Define timeline and eventlist to store events
 timeline = list() #Each element represents a time point when an event occurs
@@ -15,7 +19,7 @@ waiting_time = list() #Each element represents the waiting time of a customer gr
 avg_waiting_time = 0
 max_waiting_time = 0
 groups_served = 0
-max_queue_length = [0, 0, 0, 0]
+max_queue_length = list()
 
 #Define function add_event to add events to the eventlist and timeline
 def add_event(time, gid, event_type):
@@ -38,79 +42,54 @@ def add_event(time, gid, event_type):
         eventlist[time] = [(gid, event_type)]
     else:
         eventlist[time].append((gid, event_type))
-    print("This event is added at time " + str(time) + ": " + ("Customer group " + str(gid) + " arrives." if event_type == True else "Customer group " + str(gid) + " departs."))
+    #print("This event is added at time " + str(time) + ": " + ("Customer group " + str(gid) + " arrives." if event_type == True else "Customer group " + str(gid) + " departs."))
 
 #Define function file_input to read input from file
-def file_input():
+def file_input(rest_stat, cust_stat):
     global tables, customers, queues, tab_num
     try:
-        with open("input.txt", "r") as file:
-            #Read the first line to get the number of tables and their capacities
-            line = file.readline()
-            while line and line.strip() == '':
-                line = file.readline()
-            if not line:
-                print("Input file is empty.")
-                if_error = True
-                sys.exit()
-            try:
-                n = int(line.strip())
-            except ValueError:
-                print("Invalid number of tables.")
-                sys.exit()
-            temp_tab = list()
-            for i in range(n):
-                line = file.readline()
-                while line and line.strip() == '':
-                    line = file.readline()
-                if not line:
-                    print("Not enough table information in input file.")
-                    sys.exit()
-                try:
-                    table_cap, table_num = map(int, line.strip().split())
-                    #Update the number of tables in each capacity range
-                    if (table_cap <= 2):
-                        tab_num[0] += table_num
-                    elif (table_cap <= 4):
-                        tab_num[1] += table_num
-                    elif (table_cap <= 6):
-                        tab_num[2] += table_num
-                    else:
-                        tab_num[3] += table_num
-                except ValueError:
-                    print("Invalid table information.")
-                    sys.exit()
-                for j in range(table_num):
-                    temp_tab.append({"capacity": table_cap, "availability": True})
-                    waiting_time.append(-1) #Initialize waiting time for each customer group to 0
-            tables = sorted(temp_tab, key=lambda x: x["capacity"])
+        with open(rest_stat, 'r', encoding = 'utf-8') as file:
+            data = json.load(file)
+            sorted_queues = sorted(data["queues"], key=lambda x: x["min_size"])
+            for data_queue in sorted_queues:
+                tab_num.append(0)
+                queues.append(list())
+                queues_min_size.append(data_queue["min_size"])
+                max_queue_length.append(0)
             
-            #Read the number of customers, then their group sizes, arrival times, and dining durations
-            line = file.readline()
-            while line and line.strip() == '':
-                line = file.readline()
-            if not line:
-                print("Not enough customer information in input file.")
-                sys.exit()
-            try:
-                m = int(line.strip())
-            except ValueError:
-                print("Invalid number of customers.")
-                sys.exit()
-            for i in range(m):
-                line = file.readline()
-                while line and line.strip() == '':
-                    line = file.readline()
-                if not line:
-                    print("Not enough customer information in input file.")
+            sorted_tables = sorted(data["tables"], key=lambda x: x["capacity"])
+            for data_table in sorted_tables:
+                capacity = data_table["capacity"]
+                tables.append({"capacity": capacity, "availability": True})
+                if_set = False
+                for i in range(len(queues_min_size)):
+                    if (capacity >= queues_min_size[i]):
+                        if (i == len(queues_min_size) - 1 or capacity < queues_min_size[i + 1]):
+                            tab_num[i] += 1
+                            if_set = True
+                            break
+                if (if_set == False):
+                    print("Invalid table capacity. No corresponding queue for table with capacity " + str(capacity) + ".")
                     sys.exit()
+    except FileNotFoundError:
+        print("Input file not found.")
+        sys.exit()
+    
+    try:
+        with open(cust_stat, 'r', encoding = 'utf-8') as file:
+            reader = csv.reader(file)
+            next(reader) #Skip the header line
+            for row in reader:
                 try:
-                    arrival_time, group_size, dining_duration = map(int, line.strip().split())
+                    time_shown = (row['arrival_time'].strip()).split(':')
+                    arrival_time = int(time_shown[0]) * 100 + int(time_shown[1])
+                    group_size = int(row['group_size'].strip())
+                    dining_duration = int(row['dining_duration'].strip())
+                    customers.append({"arrival_time": arrival_time, "group_size": group_size, "dining_duration": dining_duration, "table_id": -1})
+                    add_event(arrival_time, len(customers) - 1, True)
                 except ValueError:
                     print("Invalid customer information.")
                     sys.exit()
-                customers.append({"arrival_time": arrival_time, "group_size": group_size, "dining_duration": dining_duration, "table_id": -1})
-                add_event(arrival_time, i, True)
     except FileNotFoundError:
         print("Input file not found.")
         sys.exit()
@@ -137,27 +116,27 @@ def dining_start(time, tid, qid):
     departure_time = hours * 100 + minutes
     add_event(departure_time, temp, False)
 
-    print("Customer group " + str(temp) + " starts dining at time " + str(time) + " at table " + str(tid) + ".")
+    #print("Customer group " + str(temp) + " starts dining at time " + str(time) + " at table " + str(tid) + ".")
 
 #Define function dining_end to handle the end of dining for a customer group
 def dining_end(time, tid, gid):
     customers[gid]["table_id"] = -1
     tables[tid]["availability"] = True
 
-    print("Customer group " + str(gid) + " finishes dining at time " + str(time) + " and leaves table " + str(tid) + ".")
+    #print("Customer group " + str(gid) + " finishes dining at time " + str(time) + " and leaves table " + str(tid) + ".")
 
 #Define function add_to_queue to add a customer group to a queue
 def add_to_queue(gid):
     group_size = customers[gid]["group_size"]
     this_queue = -1
-    if (group_size <= 2):
-        this_queue = 0
-    elif (group_size <= 4):
-        this_queue = 1
-    elif (group_size <= 6):
-        this_queue = 2
-    else:
-        this_queue = 3
+    for i in range(len(queues_min_size)):
+        if (group_size >= queues_min_size[i]):
+            if (i == len(queues_min_size) - 1 or group_size < queues_min_size[i + 1]):
+                this_queue = i
+                break
+    if (this_queue == -1):
+        print("Invalid group size. No corresponding queue for customer group with size " + str(group_size) + ".")
+        sys.exit()
     queues[this_queue].append(gid)
     if (len(queues[this_queue]) > max_queue_length[this_queue]):
         max_queue_length[this_queue] = len(queues[this_queue])
@@ -197,7 +176,7 @@ def file_output():
             seated_between_15_30 += 1
         else:
             seated_greater_than_30 += 1
-    with open("output.txt", "w") as file:
+    with open("operation_statistics.txt", "w") as file:
         file.write("Restaurant Seating Simulation Results\n")
 
         file.write("Total number of tables: " + str(len(tables)) + "\n")
@@ -208,10 +187,8 @@ def file_output():
         file.write("Maximum waiting time: " + str(max_waiting_time) + " minutes\n")
 
         file.write("Maximum queue length for each queue:\n")
-        file.write("   Queue 1 (size 1-2): " + str(max_queue_length[0]) + "\n")
-        file.write("   Queue 2 (size 3-4): " + str(max_queue_length[1]) + "\n")
-        file.write("   Queue 3 (size 5-6): " + str(max_queue_length[2]) + "\n")
-        file.write("   Queue 4 (size 7+): " + str(max_queue_length[3]) + "\n")
+        for i in range(len(queues_min_size)):
+            file.write("   Queue " + str(i + 1) + ": " + str(max_queue_length[i]) + "\n")
         
         file.write("Distribution of waiting times:\n")
         file.write("   Seated immediately: " + f"{seated_immediately / groups_served * 100:.2f}%" + "\n")
@@ -221,19 +198,21 @@ def file_output():
 
 #Main function    
 def main():
-    file_input()
-    print("There are " + str(len(tables)) + " tables and " + str(len(customers)) + " customer groups in total.")
+    rest_stat = string(input("Input the file for restaurant statistics (.json): "))
+    cust_stat = string(input("Input the file for customer statistics (.csv):"))
+    file_input(rest_stat, cust_stat)
+    #print("There are " + str(len(tables)) + " tables and " + str(len(customers)) + " customer groups in total.")
     temp = 0
     time = 0
 
     #Process events in chronological order
     while (temp < len(timeline)):
         time = timeline[temp]
-        print("Processing events at time " + str(time) + ".")
+        #print("Processing events at time " + str(time) + ".")
         event_id = 0
         #Handle Customer Arrivals
         while (eventlist[time][event_id][1] == True):
-            print("Customer group " + str(eventlist[time][event_id][0]) + " arrives at time " + str(time) + ".")
+            #print("Customer group " + str(eventlist[time][event_id][0]) + " arrives at time " + str(time) + ".")
             add_to_queue(eventlist[time][event_id][0])
             event_id += 1
             if (event_id >= len(eventlist[time])):
@@ -245,7 +224,7 @@ def main():
             event_id += 1
 
         #Handle Table Assignments
-        for i in range(4):
+        for i in range(len(queues)):
             check_queue(i, time)
 
         temp += 1
