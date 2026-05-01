@@ -52,7 +52,7 @@ This file contains the functions for simulation process. This program is an even
 - Customer arrival: A customer group arrives, and it is added to the corresponding queue.
 - Customer abandonment: A customer group abandons the queue if their waiting time exceeds their abandon tolerance.
 - Customer departure: A customer group departs after being served.
-- Table assignment: Check each queue and assign tables to customers if there are available tables.
+- Table assignment (this will not occur in the timeline but will be triggered automatically after all events in each timepoint): Check each queue and assign tables to customers if there are available tables.
 
 ### process_events.py
 This file contains the major functions for all the events in `simulation.py`. It can do all the events mentioned above, update customer / table status during simulation and record statistics.

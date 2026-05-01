@@ -87,6 +87,7 @@ def add_to_queue(gid, time):
     queues_min_size = state['queues_min_size']
     max_queue_length = state['max_queue_length']
     tab_num = state['tab_num']
+    res_list = state['res_list']
     
     group_size = customers[gid]["group_size"]
     this_queue = -1
@@ -109,6 +110,7 @@ def add_to_queue(gid, time):
             for i in range(table_start, table_end):
                 if (customers[gid]["group_size"] <= state['tables'][i]["capacity"] and state['tables'][i]["availability"] == True):
                     dining_start(time, i, this_queue, gid)
+                    res_list[this_queue].remove(gid)
                     return
             # If the group has a reservation but cannot be seated immediately, they will become the first in the queue
             if_reserve = True
@@ -122,6 +124,7 @@ def add_to_queue(gid, time):
     
     state['queues'] = queues
     state['max_queue_length'] = max_queue_length
+    state['res_list'] = res_list
 
 def check_reservation(end_time, qid, this_size, tab_start, tab_end):
     this_res_list = state['res_list'][qid]
