@@ -1,7 +1,7 @@
 # statistics.py
 state = None
 
-def file_output():
+def file_output(file_name):
     global state
     
     groups_served = state['groups_served']
@@ -64,7 +64,7 @@ def file_output():
         else:
             seated_greater_than_30 += 1
     
-    with open("operation_statistics.txt", "w") as file:
+    with open(file_name, "w") as file:
         file.write("Restaurant Seating Simulation Results\n\n")
 
         file.write("Simulation start at " + str(timeline[0] // 100) + ' : ' + str(timeline[0] % 100) + "\n")

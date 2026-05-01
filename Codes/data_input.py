@@ -11,24 +11,21 @@ def add_event(time, gid, event_type):
     eventlist = state['eventlist']
     
     if (time not in timeline):
-        if (len(timeline) == 0):
-            timeline.append(time)
-        elif (len(timeline) == 1):
-            if (timeline[0] < time):
-                timeline.append(time)
+        # Binary search to find the correct place in timeline
+        left = 0
+        right = len(timeline)
+        while left < right:
+            mid = (left + right) // 2
+            if timeline[mid] < time:
+                left = mid + 1
             else:
-                timeline.insert(0, time)
-        elif (timeline[-1] < time):
-            timeline.append(time)
-        else:
-            for i in range(len(timeline) - 1):
-                if (timeline[i] < time) and (timeline[i + 1] > time):
-                    timeline.insert(i + 1, time)
-                    break
+                right = mid
+        timeline.insert(left, time)
         eventlist[time] = [(gid, event_type)]
     else:
         eventlist[time].append((gid, event_type))
 
+# Read restaurant and customer information from files
 def file_input(rest_stat, cust_stat):
     global state
     
@@ -42,9 +39,9 @@ def file_input(rest_stat, cust_stat):
     res_list = state['res_list']
     
     try:
-        with open(rest_stat, 'r', encoding='utf-8') as file:
+        with open(rest_stat, 'r', encoding = 'utf-8') as file:
             data = json.load(file)
-            sorted_queues = sorted(data["queue_definitions"], key=lambda x: x["min_size"])
+            sorted_queues = sorted(data["queue_definitions"], key = lambda x: x["min_size"])
             for data_queue in sorted_queues:
                 tab_num.append(0)
                 queues.append(list())
@@ -52,7 +49,7 @@ def file_input(rest_stat, cust_stat):
                 queues_min_size.append(data_queue["min_size"])
                 max_queue_length.append(0)
             
-            sorted_tables = sorted(data["tables"], key=lambda x: x["capacity"])
+            sorted_tables = sorted(data["tables"], key = lambda x: x["capacity"])
             for data_table in sorted_tables:
                 capacity = data_table["capacity"]
                 tables.append({"capacity": capacity, "availability": True, "occupied_time": 0})
@@ -83,7 +80,7 @@ def file_input(rest_stat, cust_stat):
         sys.exit()
     
     try:
-        with open(cust_stat, 'r', encoding='utf-8') as file:
+        with open(cust_stat, 'r', encoding = 'utf-8') as file:
             reader = csv.DictReader(file)
             for row in reader:
                 try:
@@ -142,6 +139,7 @@ def file_input(rest_stat, cust_stat):
                     print(f"Invalid customer information: {e}")
                     sys.exit()
             
+            # To control the order of events in eventlist without sorting, we need to add the abandon events after all arrival events are added for the same time point
             for i in range(len(customers)):
                 if (customers[i]["abandon_time"] != -1):
                     add_event(customers[i]["abandon_time"], i, "abandon")

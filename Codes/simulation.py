@@ -16,6 +16,7 @@ def run_simulation():
 
     # Process events in chronological order
     while (temp < len(timeline)):
+        eventlist = state['eventlist']
         time = timeline[temp]
         event_id = 0
         
@@ -28,6 +29,8 @@ def run_simulation():
         
         if (event_id >= len(eventlist[time])):
             temp += 1
+            for i in range(len(queues)):
+                check_queue(i, time)
             continue
         # Handle Customer Abandonments
         while (eventlist[time][event_id][1] == "abandon"):
@@ -38,7 +41,7 @@ def run_simulation():
 
         # Handle Customer Departures
         while (event_id < len(eventlist[time])):
-            dining_end(time, customers[eventlist[time][event_id][0]]["table_id"], eventlist[time][event_id][0])
+            dining_end(customers[eventlist[time][event_id][0]]["table_id"], eventlist[time][event_id][0])
             event_id += 1
 
         # Handle Table Assignments

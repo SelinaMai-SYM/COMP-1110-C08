@@ -16,23 +16,22 @@ def add_event(time, gid, event_type):
     eventlist = state['eventlist']
     
     if (time not in timeline):
-        if (len(timeline) == 0):
-            timeline.append(time)
-        elif (len(timeline) == 1):
-            if (timeline[0] < time):
-                timeline.append(time)
+        # Binary search to find the correct place in timeline
+        left = 0
+        right = len(timeline)
+        while left < right:
+            mid = (left + right) // 2
+            if timeline[mid] < time:
+                left = mid + 1
             else:
-                timeline.insert(0, time)
-        elif (timeline[-1] < time):
-            timeline.append(time)
-        else:
-            for i in range(len(timeline) - 1):
-                if (timeline[i] < time) and (timeline[i + 1] > time):
-                    timeline.insert(i + 1, time)
-                    break
+                right = mid
+        timeline.insert(left, time)
         eventlist[time] = [(gid, event_type)]
     else:
         eventlist[time].append((gid, event_type))
+    
+    state['timeline'] = timeline
+    state['eventlist'] = eventlist
 
 # Handle the start of dining for a customer group
 def dining_start(time, tid, qid, group_reserve = -1):
@@ -70,13 +69,16 @@ def dining_start(time, tid, qid, group_reserve = -1):
     add_event(departure_time, temp, "departure")
 
 # Handle the end of dining for a customer group
-def dining_end(time, tid, gid):
+def dining_end(tid, gid):
     customers = state['customers']
     tables = state['tables']
     
     customers[gid]["table_id"] = -1
     tables[tid]["availability"] = True
     tables[tid]["occupied_time"] += customers[gid]["dining_duration"]
+
+    state['customers'] = customers
+    state['tables'] = tables
 
 # Add a customer group to a queue
 def add_to_queue(gid, time):
@@ -101,7 +103,7 @@ def add_to_queue(gid, time):
     if_reserve = False
     # Check if the group has a reservation and can be seated immediately
     if (customers[gid]["reservation"] != -1):
-        if (customers[gid]["reservation"] < time and time < add_time(customers[gid]["reservation"], 15)):
+        if (customers[gid]["reservation"] <= time and time < add_time(customers[gid]["reservation"], 15)):
             table_end = sum(tab_num[:this_queue + 1])
             table_start = table_end - tab_num[this_queue]
             for i in range(table_start, table_end):
@@ -117,12 +119,14 @@ def add_to_queue(gid, time):
         queues[this_queue].append(gid)
     if (len(queues[this_queue]) > max_queue_length[this_queue]):
         max_queue_length[this_queue] = len(queues[this_queue])
+    
+    state['queues'] = queues
+    state['max_queue_length'] = max_queue_length
 
-def check_reservation(end_time, qid, tid, tab_start, tab_end):
+def check_reservation(end_time, qid, this_size, tab_start, tab_end):
     this_res_list = state['res_list'][qid]
     customers = state['customers']
     tables = state['tables']
-    this_size = tables[tid]["capacity"]
     
     # Find the number of reservations that are scheduled before the end of dining time for this group
     cust_count = 0
@@ -154,14 +158,19 @@ def check_queue(qid, time):
     
     table_end = sum(tab_num[:qid + 1])
     table_start = table_end - tab_num[qid]
-    max_group = len(queues[qid])
-    for i in range(table_start, table_end):
-        if (max_group == 0):
+    i = 0
+    while (i < len(queues[qid])):
+        if (len(queues[qid]) == 0):
             break
-        if (tables[i]["availability"] == True and customers[queues[qid][0]]["group_size"] <= tables[i]["capacity"]):
-            if (check_reservation(add_time(time, customers[queues[qid][0]]["dining_duration"]), qid, i, table_start, table_end)):
-                dining_start(time, i, qid)
-                max_group -= 1
+        result = check_reservation(add_time(time, customers[queues[qid][i]]["dining_duration"]), qid, customers[queues[qid][i]]["group_size"], table_start, table_end)
+        if (result):
+            for j in range(table_start, table_end):
+                if (tables[j]["capacity"] >= customers[queues[qid][i]]["group_size"] and tables[j]["availability"] == True):
+                    dining_start(time, j, qid)
+                    queues = state['queues']
+                    break
+        else:
+            break
 
 def abandon_queue(gid):
     customers = state['customers']
@@ -172,4 +181,5 @@ def abandon_queue(gid):
         for queue in queues:
             if (gid in queue):
                 queue.remove(gid)
-                break
+                state['queues'] = queues
+                return

@@ -1,76 +1,52 @@
 {
   "queue_definitions": [
     {
-      "queue_id": "Q1",
       "min_size": 1,
       "max_size": 2
     },
     {
-      "queue_id": "Q2",
       "min_size": 3,
       "max_size": 4
     },
     {
-      "queue_id": "Q3",
       "min_size": 5,
       "max_size": 6
     },
     {
-      "queue_id": "Q4",
       "min_size": 7,
       "max_size": 20
     }
   ],
   "tables": [
     {
-      "table_id": "B01",
-      "capacity": 2,
-      "zone": "Front Window"
+      "capacity": 2
     },
     {
-      "table_id": "B02",
-      "capacity": 2,
-      "zone": "Front Window"
+      "capacity": 2
     },
     {
-      "table_id": "B03",
-      "capacity": 2,
-      "zone": "Side Booth"
+      "capacity": 2
     },
     {
-      "table_id": "B04",
-      "capacity": 2,
-      "zone": "Side Booth"
+      "capacity": 2
     },
     {
-      "table_id": "B05",
-      "capacity": 2,
-      "zone": "Tea Lab"
+      "capacity": 2
     },
     {
-      "table_id": "B06",
-      "capacity": 4,
-      "zone": "Tea Lab"
+      "capacity": 4
     },
     {
-      "table_id": "B07",
-      "capacity": 4,
-      "zone": "Tea Lab"
+      "capacity": 4
     },
     {
-      "table_id": "B08",
-      "capacity": 4,
-      "zone": "Patio"
+      "capacity": 4
     },
     {
-      "table_id": "B09",
-      "capacity": 6,
-      "zone": "Patio"
+      "capacity": 6
     },
     {
-      "table_id": "B10",
-      "capacity": 8,
-      "zone": "Community Bench"
+      "capacity": 8
     }
   ]
 }

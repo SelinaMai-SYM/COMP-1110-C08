@@ -7,7 +7,7 @@ from statistics import file_output
 # Use a dictionary to store all variables and pass the other files
 state = {
     # Define variables for storing restaurant and customers information
-    'tables': [], # Each element represents a table: {"capacity": int, "availability": bool}
+    'tables': [], # Each element represents a table: {"capacity": int, "availability": bool, "occupied_time": int}
     'customers': [], # Each element represents a customer group: {"arrival_time": int, "group_size": int, "dining_duration": int, "table_id": int, "reservation": int, "abandon_time": int}
     'queues': [], # Each element represents a queue for a capacity range: list of group ids
     'queues_min_size': [], # Each element represents the minimun number of customers in each queue
@@ -41,6 +41,7 @@ process_events.state = state
 def main():
     rest_stat = str(input("Input the file for restaurant statistics (.json): "))
     cust_stat = str(input("Input the file for customer statistics (.csv): "))
+    output_file = str(input("Input the file for output statistics (.txt): "))
     
     # Load data
     file_input(rest_stat, cust_stat)
@@ -49,7 +50,7 @@ def main():
     run_simulation()
     
     # Output statistics
-    file_output()
+    file_output(output_file)
 
 if __name__ == "__main__":
     main()
