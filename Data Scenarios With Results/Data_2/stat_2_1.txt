@@ -1,0 +1,25 @@
+Restaurant Seating Simulation Results
+
+Simulation start at 11 : 35
+Simulation end at 13 : 52
+Total simulation time: 2 hours and 17 minutes
+
+Total number of tables: 11
+Average table utilization percentage: 51.76%
+Number of tables with utilization > 75%: 1
+Number of tables with utilization > 50%: 7
+Number of unused tables: 0
+
+Total number of queues: 1
+Maximum queue length for each queue:
+    Queue 1: 1
+
+Total number of customer groups: 16
+Total number of customer groups served: 16
+Average waiting time: 0.00 minutes
+Maximum waiting time: 0 minutes
+Distribution of waiting times:
+    Seated immediately: 100.00%
+    Seated between 0-15 minutes: 0.00%
+    Seated between 15-30 minutes: 0.00%
+    Seated greater than 30 minutes: 0.00%

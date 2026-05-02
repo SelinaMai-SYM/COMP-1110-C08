@@ -162,7 +162,9 @@ def check_queue(qid, time):
     table_end = sum(tab_num[:qid + 1])
     table_start = table_end - tab_num[qid]
     i = 0
+    if_seat = False
     while (i < len(queues[qid])):
+        if_seat = False
         if (len(queues[qid]) == 0):
             break
         result = check_reservation(add_time(time, customers[queues[qid][i]]["dining_duration"]), qid, customers[queues[qid][i]]["group_size"], table_start, table_end)
@@ -171,7 +173,10 @@ def check_queue(qid, time):
                 if (tables[j]["capacity"] >= customers[queues[qid][i]]["group_size"] and tables[j]["availability"] == True):
                     dining_start(time, j, qid)
                     queues = state['queues']
+                    if_seat = True
                     break
+            if (not if_seat):
+                break
         else:
             break
 
